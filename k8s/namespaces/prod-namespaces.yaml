@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: payments
+    finserv.io/owner: payments-team
+    finserv.io/data-classification: cardholder-data
+    finserv.io/pci-scope: "true"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: risk-compliance
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: risk-compliance
+    finserv.io/owner: risk-team
+    finserv.io/data-classification: regulated
+    finserv.io/pci-scope: "true"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: customer
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: customer
+    finserv.io/owner: customer-team
+    finserv.io/data-classification: pii
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: platform
+    finserv.io/owner: platform-team
+    finserv.io/data-classification: internal
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-tools
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: system
+    finserv.io/owner: security-team
+    finserv.io/system-namespace: "true"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: system
+    finserv.io/owner: platform-team
+    finserv.io/system-namespace: "true"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-system
+  labels:
+    finserv.io/environment: prod
+    finserv.io/domain: system
+    finserv.io/owner: platform-team
+    finserv.io/system-namespace: "true"
