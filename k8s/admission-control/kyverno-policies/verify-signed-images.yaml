@@ -1,0 +1,59 @@
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: finserv-verify-signed-images
+  annotations:
+    policies.kyverno.io/title: Verify FinServ Signed Images
+    policies.kyverno.io/category: Software Supply Chain Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+spec:
+  validationActions:
+    - Deny
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: finserv.io/environment
+          operator: In
+          values:
+            - staging
+            - prod
+        - key: finserv.io/domain
+          operator: In
+          values:
+            - payments
+            - risk-compliance
+            - customer
+            - platform
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchImageReferences:
+    - glob: "ghcr.io/simeonprimordial/finserv-*"
+  validationConfigurations:
+    mutateDigest: true
+    required: true
+    verifyDigest: true
+  attestors:
+    - name: cosign
+      cosign:
+        keyless:
+          identities:
+            - subject: "https://github.com/simeonprimordial/security-hardened-kubernetes-platform/.github/workflows/secure-image.yml@refs/heads/main"
+              issuer: "https://token.actions.githubusercontent.com"
+        ctlog:
+          url: "https://rekor.sigstore.dev"
+  validations:
+    - expression: >-
+        images.containers.map(img,
+          verifyImageSignatures(img, [attestors.cosign])).all(result, result > 0)
+      message: >-
+        Image signature verification failed. Production and staging images must be signed by the approved GitHub Actions workflow.
