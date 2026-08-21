@@ -1,0 +1,62 @@
+# Pre-stage this policy in each application namespace so an incident responder
+# can quarantine a Pod immediately by applying the label:
+# security.finserv.io/quarantine=true
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emergency-quarantine
+  namespace: payments
+  labels:
+    security.finserv.io/purpose: incident-response
+spec:
+  podSelector:
+    matchLabels:
+      security.finserv.io/quarantine: "true"
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emergency-quarantine
+  namespace: risk-compliance
+  labels:
+    security.finserv.io/purpose: incident-response
+spec:
+  podSelector:
+    matchLabels:
+      security.finserv.io/quarantine: "true"
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emergency-quarantine
+  namespace: customer
+  labels:
+    security.finserv.io/purpose: incident-response
+spec:
+  podSelector:
+    matchLabels:
+      security.finserv.io/quarantine: "true"
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: emergency-quarantine
+  namespace: platform
+  labels:
+    security.finserv.io/purpose: incident-response
+spec:
+  podSelector:
+    matchLabels:
+      security.finserv.io/quarantine: "true"
+  policyTypes:
+    - Ingress
+    - Egress
