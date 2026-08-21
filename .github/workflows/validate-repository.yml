@@ -1,0 +1,41 @@
+name: Validate Kubernetes Platform Repository
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: YAML, Kubernetes schema and Helm validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install YAML tooling
+        run: python3 -m pip install --disable-pip-version-check PyYAML yamllint
+
+      - name: Install kubeconform 0.7.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSLo /tmp/kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          sudo install -m 0755 /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
+      - name: Validate repository
+        run: bash scripts/validate-repository.sh

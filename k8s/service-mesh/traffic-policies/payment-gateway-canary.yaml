@@ -1,0 +1,59 @@
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: payment-gateway
+  namespace: payments
+spec:
+  host: payment-gateway.payments.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 500
+        connectTimeout: 2s
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 100
+        idleTimeout: 60s
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  subsets:
+    - name: stable
+      labels:
+        version: stable
+    - name: canary
+      labels:
+        version: canary
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: payment-gateway
+  namespace: payments
+spec:
+  hosts:
+    - payment-gateway.payments.svc.cluster.local
+  http:
+    - name: controlled-canary
+      timeout: 5s
+      retries:
+        attempts: 2
+        perTryTimeout: 2s
+        retryOn: gateway-error,connect-failure,refused-stream
+      route:
+        - destination:
+            host: payment-gateway.payments.svc.cluster.local
+            subset: stable
+            port:
+              number: 8443
+          weight: 95
+        - destination:
+            host: payment-gateway.payments.svc.cluster.local
+            subset: canary
+            port:
+              number: 8443
+          weight: 5
