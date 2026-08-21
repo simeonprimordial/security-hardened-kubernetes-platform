@@ -1,0 +1,109 @@
+- list: finserv_application_namespaces
+  items:
+    - payments
+    - risk-compliance
+    - customer
+    - platform
+
+- list: finserv_shell_binaries
+  items:
+    - bash
+    - sh
+    - dash
+    - ash
+    - zsh
+    - ksh
+
+- list: finserv_miner_processes
+  items:
+    - xmrig
+    - minerd
+    - cpuminer
+    - cpuminer-multi
+    - ethminer
+
+- macro: finserv_application_container
+  condition: container and k8s.ns.name in (finserv_application_namespaces)
+
+- rule: FinServ Shell Spawned In Application Container
+  desc: Detect an interactive-capable shell process starting inside a FinServ application namespace.
+  condition: >
+    finserv_application_container and
+    evt.type in (execve, execveat) and
+    proc.name in (finserv_shell_binaries)
+  output: >
+    Shell spawned in FinServ application container
+    (namespace=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    user=%user.name process=%proc.name command=%proc.cmdline image=%container.image)
+  priority: WARNING
+  tags: [finserv, container, shell, pci, mitre_execution]
+
+- rule: FinServ Sensitive Cardholder File Access
+  desc: Detect access to the cardholder-data filesystem location by a process in the Payments namespace.
+  condition: >
+    container and
+    k8s.ns.name=payments and
+    evt.type in (open, openat, openat2) and
+    fd.name startswith /var/lib/finserv/cardholder-data/
+  output: >
+    Sensitive cardholder-data path accessed
+    (namespace=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    user=%user.name process=%proc.name command=%proc.cmdline file=%fd.name)
+  priority: CRITICAL
+  tags: [finserv, payments, cardholder-data, pci, file]
+
+- rule: FinServ Application Attempted Direct Etcd Connection
+  desc: Detect an application container attempting to communicate directly with an etcd server port.
+  condition: >
+    finserv_application_container and
+    evt.type=connect and
+    fd.typechar in (4, 6) and
+    fd.sport in (2379, 2380)
+  output: >
+    FinServ application attempted direct etcd communication
+    (namespace=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    process=%proc.name command=%proc.cmdline server_ip=%fd.sip server_port=%fd.sport)
+  priority: CRITICAL
+  tags: [finserv, etcd, lateral_movement, pci]
+
+- rule: FinServ Unexpected Public Egress From Payment Processing
+  desc: Detect Payment Gateway or Transaction Processor connection attempts to public destinations outside the documented payment-provider range.
+  condition: >
+    container and
+    k8s.ns.name=payments and
+    k8s.pod.label[app.kubernetes.io/name] in (payment-gateway, transaction-processor) and
+    evt.type=connect and
+    fd.typechar in (4, 6) and
+    not fd.sip in (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 203.0.113.0/28)
+  output: >
+    Unexpected public egress attempt from payment processing workload
+    (namespace=%k8s.ns.name pod=%k8s.pod.name app=%k8s.pod.label[app.kubernetes.io/name]
+    process=%proc.name command=%proc.cmdline destination=%fd.sip server_port=%fd.sport)
+  priority: CRITICAL
+  tags: [finserv, payments, network, exfiltration, pci]
+
+- rule: FinServ Password Database Read From Application Container
+  desc: Detect reads of local account databases from FinServ application containers.
+  condition: >
+    finserv_application_container and
+    evt.type in (open, openat, openat2) and
+    fd.name in (/etc/shadow, /etc/passwd)
+  output: >
+    Local account database accessed from FinServ application container
+    (namespace=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    user=%user.name process=%proc.name command=%proc.cmdline file=%fd.name)
+  priority: WARNING
+  tags: [finserv, credential_access, container, pci]
+
+- rule: FinServ Cryptocurrency Miner Process
+  desc: Detect common cryptocurrency-mining process names running inside a FinServ application container.
+  condition: >
+    finserv_application_container and
+    evt.type in (execve, execveat) and
+    proc.name in (finserv_miner_processes)
+  output: >
+    Cryptocurrency mining process detected in FinServ application container
+    (namespace=%k8s.ns.name pod=%k8s.pod.name container=%container.name
+    process=%proc.name command=%proc.cmdline image=%container.image)
+  priority: CRITICAL
+  tags: [finserv, cryptomining, container, resource_hijacking]
