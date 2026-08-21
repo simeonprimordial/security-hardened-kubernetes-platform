@@ -1,0 +1,32 @@
+# Falco Helm values for FinServ Digital runtime threat detection.
+# Custom rules are stored separately at:
+# k8s/audit/falco-rules/finserv-rules.yaml
+
+driver:
+  kind: modern_ebpf
+
+falco:
+  priority: warning
+
+falcosidekick:
+  enabled: true
+  fullfqdn: true
+
+  serviceMonitor:
+    enabled: true
+
+  prometheusRules:
+    enabled: true
+
+  config:
+    customfields: "platform:finserv-digital"
+    customtags: "kubernetes,pci"
+    alertmanager:
+      hostport: "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
+      endpoint: "/api/v2/alerts"
+      minimumpriority: "warning"
+      extralabels: "source:falco,platform:finserv-digital"
+
+# Falcosidekick is intentionally routed to Alertmanager rather than embedding
+# Slack/PagerDuty credentials here. Alertmanager receiver credentials belong in
+# an external secret-management path, not in this repository.

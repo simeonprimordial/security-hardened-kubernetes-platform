@@ -1,0 +1,35 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - RequestReceived
+rules:
+  # High-volume health/metrics endpoints are intentionally excluded.
+  - level: None
+    nonResourceURLs:
+      - /healthz*
+      - /livez*
+      - /readyz*
+      - /metrics*
+
+  # Secret values must never be copied into the audit log body.
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets"]
+
+  # Capture maximum context for unauthenticated/anonymous API activity.
+  - level: RequestResponse
+    userGroups:
+      - system:unauthenticated
+
+  # Record mutation request bodies for forensic reconstruction.
+  - level: Request
+    verbs:
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+
+  # Record metadata for all remaining API activity.
+  - level: Metadata
